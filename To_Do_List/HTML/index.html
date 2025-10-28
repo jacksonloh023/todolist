@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title style="color:#d0d7df">To Do List - User & History</title>
+    <style>
+        :root {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            color: #222;
+        }
+
+        body {
+            max-width: 900px;
+            margin: 28px auto;
+            padding: 18px;
+            background-image:url("../Images/growtika-yGQmjh2uOTg-unsplash.jpg");
+            background-color: rgba(0,0,0,0);
+            border-radius: 8px;
+            box-shadow: 0 6px 18px rgba(20, 30, 50, 1);
+        }
+
+        header {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        header h1 {
+            font-size: 20px;
+            margin: 0;
+        }
+
+        .user-box {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-left: auto;
+        }
+
+        input[type="text"] {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #d0d7df;
+            background: white;
+        }
+
+        button {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #bfc8d2;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        button.primary {
+            background: #2563eb;
+            color: white;
+            border-color: #1f4fd8;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 16px;
+        }
+
+        .card {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e6eaef;
+        }
+
+        form.add {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li.task {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+        }
+
+        li.task+li.task {
+            margin-top: 8px;
+        }
+
+        .task-text {
+            flex: 1;
+        }
+
+        .muted {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .tabs button {
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+
+        .small {
+            font-size: 13px;
+            padding: 6px 8px;
+        }
+
+        .history-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px dashed #e1e6ee;
+            background: #fbfdff;
+        }
+
+        .time {
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        .empty {
+            color: #9aa6b3;
+            text-align: center;
+            padding: 18px 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1 class="text">To‑Do List</h1>
+        <div class="user-box card" style="padding:8px;">
+            <label class="muted" for="username">User:</label>
+            <input id="username" type="text" placeholder="Enter username" />
+            <button id="setUser" class="primary small">Set</button>
+            <div id="currentUser" class="muted" style="margin-left:10px;"></div>
+        </div>
+    </header>
+
+    <main class="layout">
+        <section class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong>Tasks</strong>
+                <div class="muted" id="taskCount">0</div>
+            </div>
+
+            <form id="addForm" class="add" autocomplete="off">
+                <input id="taskInput" type="text" placeholder="Add new task..." required />
+                <button type="submit" class="primary">Add</button>
+            </form>
+
+            <div class="tabs">
+                <button id="tabActive" class="small">Active</button>
+                <button id="tabCompleted" class="small">Completed</button>
+            </div>
+
+            <div id="activeView">
+                <ul id="tasksList" aria-live="polite"></ul>
+                <div id="noTasks" class="empty" style="display:none;">No tasks. Add one above.</div>
+            </div>
+
+            <div id="completedView" style="display:none;">
+                <ul id="completedList"></ul>
+                <div id="noCompleted" class="empty" style="display:none;">No completed tasks yet.</div>
+            </div>
+        </section>
+
+        <aside class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong>History</strong>
+                <button id="clearHistory" class="small">Clear</button>
+            </div>
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+                <button id="showAllHistory" class="small">All</button>
+                <button id="showDeletedHistory" class="small">Deleted</button>
+                <button id="showCompletedHistory" class="small">Completed</button>
+            </div>
+            <div id="historyList" style="display:flex; flex-direction:column; gap:8px;">
+                <div id="noHistory" class="empty">No history yet.</div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // Simple todo app with per-user persistence and history
+        (function () {
+            const usernameInput = document.getElementById('username');
+            const setUserBtn = document.getElementById('setUser');
+            const currentUserEl = document.getElementById('currentUser');
+            const addForm = document.getElementById('addForm');
+            const taskInput = document.getElementById('taskInput');
+            const tasksList = document.getElementById('tasksList');
+            const completedList = document.getElementById('completedList');
+            const taskCountEl = document.getElementById('taskCount');
+            const noTasks = document.getElementById('noTasks');
+            const noCompleted = document.getElementById('noCompleted');
+            const tabActive = document.getElementById('tabActive');
+            const tabCompleted = document.getElementById('tabCompleted');
+
+            const historyListEl = document.getElementById('historyList');
+            const clearHistoryBtn = document.getElementById('clearHistory');
+            const showAllHistoryBtn = document.getElementById('showAllHistory');
+            const showDeletedHistoryBtn = document.getElementById('showDeletedHistory');
+            const showCompletedHistoryBtn = document.getElementById('showCompletedHistory');
+            const noHistory = document.getElementById('noHistory');
+
+            let user = localStorage.getItem('todo_user') || 'default';
+            let tasks = []; // active tasks
+            let history = []; // completed or deleted with metadata
+            let historyFilter = 'all'; // all, deleted, completed
+
+            function keyTasks(u) { return 'td_tasks_' + u; }
+            function keyHistory(u) { return 'td_hist_' + u; }
+
+            function loadState() {
+                const rawTasks = localStorage.getItem(keyTasks(user));
+                const rawHistory = localStorage.getItem(keyHistory(user));
+                tasks = rawTasks ? JSON.parse(rawTasks) : [];
+                history = rawHistory ? JSON.parse(rawHistory) : [];
+                renderAll();
+            }
+
+            function saveState() {
+                localStorage.setItem(keyTasks(user), JSON.stringify(tasks));
+                localStorage.setItem(keyHistory(user), JSON.stringify(history));
+            }
+
+            function setUser(u) {
+                user = (u && u.trim()) || 'default';
+                localStorage.setItem('todo_user', user);
+                currentUserEl.textContent = 'Active: ' + user;
+                usernameInput.value = '';
+                loadState();
+            }
+
+            function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+            function addTask(text) {
+                const t = { id: uid(), text: text.trim(), createdAt: Date.now() };
+                tasks.unshift(t);
+                saveState();
+                renderAll();
+            }
+
+            function completeTask(id) {
+                const idx = tasks.findIndex(t => t.id === id);
+                if (idx === -1) return;
+                const t = tasks.splice(idx, 1)[0];
+                t.completedAt = Date.now();
+                history.unshift({ type: 'completed', item: t });
+                saveState();
+                renderAll();
+            }
+
+            function deleteTask(id) {
+                // soft delete from active tasks to history
+                const idx = tasks.findIndex(t => t.id === id);
+                if (idx === -1) return;
+                const t = tasks.splice(idx, 1)[0];
+                t.deletedAt = Date.now();
+                history.unshift({ type: 'deleted', item: t });
+                saveState();
+                renderAll();
+            }
+
+            function restoreFromHistory(hid) {
+                const idx = history.findIndex(h => h.item.id === hid);
+                if (idx === -1) return;
+                const entry = history.splice(idx, 1)[0];
+                const item = entry.item;
+                delete item.deletedAt;
+                delete item.completedAt;
+                tasks.unshift(item);
+                saveState();
+                renderAll();
+            }
+
+            function removeHistoryEntry(hid) {
+                const idx = history.findIndex(h => h.item.id === hid);
+                if (idx === -1) return;
+                history.splice(idx, 1);
+                saveState();
+                renderAll();
+            }
+
+            function clearHistory() {
+                if (!confirm('Clear history for this user? This cannot be undone.')) return;
+                history = [];
+                saveState();
+                renderAll();
+            }
+
+            function renderAll() {
+                renderTasks();
+                renderCompleted();
+                renderHistory();
+            }
+
+            function renderTasks() {
+                tasksList.innerHTML = '';
+                completedList.innerHTML = '';
+                const active = tasks.filter(t => !t.completedAt && !t.deletedAt);
+                taskCountEl.textContent = active.length;
+                if (!active.length) {
+                    noTasks.style.display = 'block';
+                } else {
+                    noTasks.style.display = 'none';
+                }
+                active.forEach(t => {
+                    const li = document.createElement('li');
+                    li.className = 'task';
+                    li.innerHTML = `
+                        <button data-act="complete" data-id="${t.id}" title="Complete">✔</button>
+                        <div class="task-text">${escapeHtml(t.text)}</div>
+                        <div class="muted time">${timeAgo(t.createdAt)}</div>
+                        <div style="display:flex; gap:6px;">
+                            <button data-act="delete" data-id="${t.id}" title="Delete">🗑</button>
+                        </div>
+                    `;
+                    tasksList.appendChild(li);
+                });
+            }
+
+            function renderCompleted() {
+                const completed = history.filter(h => h.type === 'completed').map(h => h.item);
+                if (completed.length === 0) {
+                    noCompleted.style.display = 'block';
+                    completedList.style.display = 'none';
+                } else {
+                    noCompleted.style.display = 'none';
+                    completedList.style.display = 'block';
+                    completedList.innerHTML = '';
+                    completed.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = 'task';
+                        li.innerHTML = `
+                            <div style="width:28px; text-align:center;">✅</div>
+                            <div class="task-text" style="text-decoration:line-through; color:#6b7280;">${escapeHtml(item.text)}</div>
+                            <div class="muted time">${timeAgo(item.completedAt || item.createdAt)}</div>
+                            <div style="display:flex; gap:6px;">
+                                <button data-act="restore" data-id="${item.id}" title="Restore">↺</button>
+                                <button data-act="removeHist" data-id="${item.id}" title="Remove">✖</button>
+                            </div>
+                        `;
+                        completedList.appendChild(li);
+                    });
+                }
+            }
+
+            function renderHistory() {
+                historyListEl.querySelectorAll('.history-entry, .empty').forEach(n => n.remove());
+                const filtered = history.filter(h => {
+                    if (historyFilter === 'all') return true;
+                    return h.type === historyFilter;
+                });
+                if (filtered.length === 0) {
+                    historyListEl.appendChild(noHistory);
+                    noHistory.style.display = 'block';
+                } else {
+                    noHistory.style.display = 'none';
+                    filtered.forEach(h => {
+                        const div = document.createElement('div');
+                        div.className = 'history-entry';
+                        const it = h.item;
+                        div.innerHTML = `
+                            <div style="flex:1;">
+                                <div><strong>${escapeHtml(it.text)}</strong></div>
+                                <div class="muted time">${h.type} • ${formatDate(h.type === 'deleted' ? it.deletedAt : (it.completedAt || it.createdAt))}</div>
+                            </div>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <button data-act="restore" data-id="${it.id}">Restore</button>
+                                <button data-act="removeHist" data-id="${it.id}">Delete</button>
+                            </div>
+                        `;
+                        historyListEl.appendChild(div);
+                    });
+                }
+            }
+
+            // event handling
+            addForm.addEventListener('submit', e => {
+                e.preventDefault();
+                const v = taskInput.value.trim();
+                if (!v) return;
+                addTask(v);
+                taskInput.value = '';
+                taskInput.focus();
+            });
+
+            tasksList.addEventListener('click', e => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                const act = btn.dataset.act;
+                const id = btn.dataset.id;
+                if (act === 'complete') completeTask(id);
+                if (act === 'delete') deleteTask(id);
+            });
+
+            completedList.addEventListener('click', e => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                const act = btn.dataset.act;
+                const id = btn.dataset.id;
+                if (act === 'restore') restoreFromHistory(id);
+                if (act === 'removeHist') removeHistoryEntry(id);
+            });
+
+            historyListEl.addEventListener('click', e => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                const act = btn.dataset.act;
+                const id = btn.dataset.id;
+                if (act === 'restore') restoreFromHistory(id);
+                if (act === 'removeHist') removeHistoryEntry(id);
+            });
+
+            setUserBtn.addEventListener('click', () => setUser(usernameInput.value));
+            usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') setUser(usernameInput.value); });
+
+            tabActive.addEventListener('click', () => {
+                document.getElementById('activeView').style.display = '';
+                document.getElementById('completedView').style.display = 'none';
+            });
+            tabCompleted.addEventListener('click', () => {
+                document.getElementById('activeView').style.display = 'none';
+                document.getElementById('completedView').style.display = '';
+            });
+
+            clearHistoryBtn.addEventListener('click', clearHistory);
+            showAllHistoryBtn.addEventListener('click', () => { historyFilter = 'all'; renderHistory(); });
+            showDeletedHistoryBtn.addEventListener('click', () => { historyFilter = 'deleted'; renderHistory(); });
+            showCompletedHistoryBtn.addEventListener('click', () => { historyFilter = 'completed'; renderHistory(); });
+
+            // utilities
+            function formatDate(ts) {
+                if (!ts) return '-';
+                const d = new Date(ts);
+                return d.toLocaleString();
+            }
+            function timeAgo(ts) {
+                if (!ts) return '';
+                const diff = Math.floor((Date.now() - ts) / 1000);
+                if (diff < 10) return 'just now';
+                if (diff < 60) return diff + 's';
+                if (diff < 3600) return Math.floor(diff / 60) + 'm';
+                if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+                return Math.floor(diff / 86400) + 'd';
+            }
+            function escapeHtml(s) {
+                return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;" }[c]));
+            }
+
+            // init
+            setUser(user);
+        })();
+    </script>
+</body>
+
+</html>
